@@ -1,0 +1,36 @@
+name: Validate Mangais APK
+on:
+  workflow_dispatch:
+    inputs:
+      pending_id:
+        required: true
+        type: string
+      release_id:
+        required: true
+        type: string
+      asset_id:
+        required: true
+        type: string
+      callback_url:
+        required: true
+        type: string
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Android build tools
+        run: sdkmanager 'build-tools;35.0.0' >/dev/null
+      - name: Validate APK and report result
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_API_TOKEN }}
+          CALLBACK_SECRET: ${{ secrets.CALLBACK_SECRET }}
+          CERT_SHA256: ${{ secrets.CERT_SHA256 }}
+          REPO: ${{ github.repository }}
+          PENDING_ID: ${{ inputs.pending_id }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          ASSET_ID: ${{ inputs.asset_id }}
+          CALLBACK_URL: ${{ inputs.callback_url }}
+        run: python3 validate.py
