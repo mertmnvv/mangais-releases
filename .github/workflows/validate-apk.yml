@@ -25,7 +25,7 @@ jobs:
         run: sdkmanager 'build-tools;35.0.0' >/dev/null
       - name: Validate APK and report result
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_API_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           CALLBACK_SECRET: ${{ secrets.CALLBACK_SECRET }}
           CERT_SHA256: ${{ secrets.CERT_SHA256 }}
           REPO: ${{ github.repository }}
