@@ -10,6 +10,11 @@ import urllib.error
 import urllib.request
 
 API = f"https://api.github.com/repos/{os.environ['REPO']}"
+CALLBACK_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Accept": "application/json",
+    "Accept-Language": "en-US,en;q=0.9",
+}
 HEADERS = {
     "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
     "Accept": "application/vnd.github+json",
@@ -25,7 +30,7 @@ def report(payload):
     raw = json.dumps(payload, separators=(",", ":")).encode()
     signature = hmac.new(os.environ["CALLBACK_SECRET"].encode(), raw, hashlib.sha256).hexdigest()
     request = urllib.request.Request(os.environ["CALLBACK_URL"], raw, {
-        "Content-Type": "application/json", "X-Mangais-Signature": signature}, method="POST")
+        "Content-Type": "application/json", "X-Mangais-Signature": signature, **CALLBACK_HEADERS}, method="POST")
     try:
         with urllib.request.urlopen(request, timeout=60) as response:
             print(response.read().decode())
@@ -63,7 +68,7 @@ def run():
         raise ValueError("APK package or minSdk missing")
     # The release notes are stored by the Worker; fetch declared values from a signed, read-only endpoint.
     info_url = os.environ["CALLBACK_URL"].replace("/validation", "/validation-info") + "?id=" + os.environ["PENDING_ID"]
-    request = urllib.request.Request(info_url, headers={"X-Mangais-Secret": os.environ["CALLBACK_SECRET"]})
+    request = urllib.request.Request(info_url, headers={"X-Mangais-Secret": os.environ["CALLBACK_SECRET"], **CALLBACK_HEADERS})
     with urllib.request.urlopen(request, timeout=30) as response:
         declared = json.load(response)
     if int(package.group(2)) != declared["versionCode"] or package.group(3) != declared["versionName"]:
