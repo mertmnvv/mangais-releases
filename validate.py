@@ -22,8 +22,15 @@ HEADERS = {
     "User-Agent": "mangais-apk-validator",
 }
 
+def checked_open(request, timeout, label):
+    try:
+        return urllib.request.urlopen(request, timeout=timeout)
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", "replace")[:300]
+        raise RuntimeError(f"{label} HTTP {error.code}: {detail}") from error
+
 def api(path):
-    with urllib.request.urlopen(urllib.request.Request(API + path, headers=HEADERS), timeout=30) as response:
+    with checked_open(urllib.request.Request(API + path, headers=HEADERS), 30, f"GitHub API {path}") as response:
         return json.load(response)
 
 def report(payload):
@@ -48,7 +55,7 @@ def run():
         asset = api(f"/releases/assets/{os.environ['ASSET_ID']}")
     if asset["id"] not in [item["id"] for item in release["assets"]]:
         raise ValueError("Asset is not in the expected draft release")
-    with urllib.request.urlopen(urllib.request.Request(asset["url"], headers={**HEADERS, "Accept": "application/octet-stream"}), timeout=120) as response, open("app.apk", "wb") as output:
+    with checked_open(urllib.request.Request(asset["url"], headers={**HEADERS, "Accept": "application/octet-stream"}), 120, "GitHub APK download") as response, open("app.apk", "wb") as output:
         while block := response.read(1024 * 1024):
             output.write(block)
     data = open("app.apk", "rb").read()
@@ -69,7 +76,7 @@ def run():
     # The release notes are stored by the Worker; fetch declared values from a signed, read-only endpoint.
     info_url = os.environ["CALLBACK_URL"].replace("/validation", "/validation-info") + "?id=" + os.environ["PENDING_ID"]
     request = urllib.request.Request(info_url, headers={"X-Mangais-Secret": os.environ["CALLBACK_SECRET"], **CALLBACK_HEADERS})
-    with urllib.request.urlopen(request, timeout=30) as response:
+    with checked_open(request, 30, "Worker validation-info") as response:
         declared = json.load(response)
     if int(package.group(2)) != declared["versionCode"] or package.group(3) != declared["versionName"]:
         raise ValueError("Embedded APK version differs from the form")
