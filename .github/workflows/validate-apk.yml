@@ -21,8 +21,10 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Install Android build tools
-        run: sdkmanager 'build-tools;35.0.0' >/dev/null
+      - name: Verify preinstalled Android build tools
+        run: |
+          test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/aapt"
       - name: Validate APK and report result
         env:
           GH_TOKEN: ${{ github.token }}
