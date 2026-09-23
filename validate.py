@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import time
+import urllib.error
 import urllib.request
 
 API = f"https://api.github.com/repos/{os.environ['REPO']}"
@@ -25,8 +26,12 @@ def report(payload):
     signature = hmac.new(os.environ["CALLBACK_SECRET"].encode(), raw, hashlib.sha256).hexdigest()
     request = urllib.request.Request(os.environ["CALLBACK_URL"], raw, {
         "Content-Type": "application/json", "X-Mangais-Signature": signature}, method="POST")
-    with urllib.request.urlopen(request, timeout=60) as response:
-        print(response.read().decode())
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            print(response.read().decode())
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", "replace")[:300]
+        raise RuntimeError(f"Validation callback HTTP {error.code}: {detail}") from error
 
 def run():
     release = api(f"/releases/{os.environ['RELEASE_ID']}")
@@ -73,6 +78,7 @@ if __name__ == "__main__":
         result.update(run())
     except Exception as error:
         result.update({"success": False, "reason": str(error)[:400]})
+    print(json.dumps(result, ensure_ascii=False))
     report(result)
     if not result["success"]:
         raise SystemExit(result["reason"])
