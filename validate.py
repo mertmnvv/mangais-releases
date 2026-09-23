@@ -89,7 +89,14 @@ if __name__ == "__main__":
     try:
         result.update(run())
     except Exception as error:
-        result.update({"success": False, "reason": str(error)[:400]})
+        # A GitHub Actions token with read-only contents permission cannot see
+        # draft releases. Treat this as an infrastructure limitation, not as a
+        # failed APK validation: leave the draft intact for trusted verification.
+        message = str(error)
+        if "Resource not accessible by integration" in message:
+            print(f"Validation deferred: {message}")
+            raise SystemExit(1)
+        result.update({"success": False, "reason": message[:400]})
     print(json.dumps(result, ensure_ascii=False))
     report(result)
     if not result["success"]:
